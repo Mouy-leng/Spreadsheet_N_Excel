@@ -49,3 +49,70 @@ Follow these steps to deploy and use the script in your Google Sheets.
 - **`createFuelPurchasesSheet(ss)`**: Creates the `Fuel Purchases` sheet with formulas to calculate purchase metrics.
 - **`createFuelSalesSheet(ss)`**: Creates the `Fuel Sales` sheet with formulas to calculate sales and profit.
 - **`createDashboardSheet(ss)`**: Creates the `Dashboard` with `SUMIF` formulas to summarize the data from the other sheets.
+
+## Executing the Script with Python
+
+In addition to running the script from the Google Sheets editor, you can execute it from your local machine using the provided Python script. This method is ideal for automated workflows.
+
+### Prerequisites
+
+- Python 3.6 or higher
+- Access to a Google Cloud Platform (GCP) project
+
+### 1. Set Up Your Python Environment
+
+- Clone this repository to your local machine.
+- Install the required Python libraries using pip:
+
+  ```bash
+  pip install -r requirements.txt
+  ```
+
+### 2. Configure Google API Access
+
+To run the Python script, you need to enable the Google Apps Script API and create OAuth 2.0 credentials.
+
+- **Enable the Google Apps Script API:**
+  - Go to the [Google Cloud Console](https://console.cloud.google.com/).
+  - Make sure you have a GCP project created.
+  - In the navigation menu, go to `APIs & Services` > `Library`.
+  - Search for "Google Apps Script API" and enable it.
+
+- **Create OAuth 2.0 Credentials:**
+  - In the navigation menu, go to `APIs & Services` > `Credentials`.
+  - Click `+ CREATE CREDENTIALS` and select `OAuth client ID`.
+  - Choose `Desktop app` as the application type.
+  - Give it a name (e.g., "Fuel Management Script Client").
+  - After creating the client ID, a pop-up will show your client ID and secret. Click `DOWNLOAD JSON`.
+  - Rename the downloaded file to `creds.json` and place it in the root directory of this project. **Do not commit this file to version control.**
+
+### 3. Link the GCP Project to Your Apps Script
+
+Your Apps Script project needs to be associated with the GCP project where you enabled the API.
+
+- Open your Apps Script project in the editor (`Extensions` > `Apps Script`).
+- In the left sidebar, click `Project Settings` (the gear icon).
+- Scroll down to the `Google Cloud Platform (GCP) Project` section.
+- Click `Change project` and enter the **Project Number** of your GCP project. You can find this number on your GCP Console dashboard.
+
+### 4. Run the Python Script
+
+- Before running the script, make sure you have the `Script_ID` environment variable set. You can find the Script ID in your Apps Script `Project Settings`.
+
+  - **For Linux/macOS:**
+    ```bash
+    export Script_ID="YOUR_SCRIPT_ID"
+    ```
+  - **For Windows:**
+    ```bash
+    set Script_ID="YOUR_SCRIPT_ID"
+    ```
+
+- Execute the script:
+  ```bash
+  python execute_script.py
+  ```
+
+- The first time you run it, a browser window will open, asking you to authorize the script. Log in with your Google account and grant the necessary permissions.
+- After authorization, a `token.json` file will be created in the project directory. This file stores your credentials, so you won't need to authorize again unless you delete it.
+- The script will then call the `createFuelManagementTemplate` function, and you will see a success message in your terminal.
