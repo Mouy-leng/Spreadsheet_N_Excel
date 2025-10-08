@@ -8,8 +8,13 @@
 
 /**
  * Creates a complete fuel management template in the active spreadsheet.
- * This function acts as the main entry point and orchestrates the creation
- * of the entire template by calling helper functions for each sheet.
+ *
+ * This function serves as the main entry point for the script. It orchestrates
+ * the creation of the entire template by calling a series of helper functions,
+ * each responsible for a specific sheet. It concludes by flushing pending
+ * changes and displaying a success alert.
+ *
+ * @returns {void}
  */
 function createFuelManagementTemplate() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -23,17 +28,26 @@ function createFuelManagementTemplate() {
 }
 
 /**
- * Deletes all existing sheets in the spreadsheet to ensure a clean slate.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet.
+ * Deletes all existing sheets in the spreadsheet.
+ *
+ * This function iterates through all sheets in the provided spreadsheet and
+ * deletes them, ensuring a clean slate before creating the new template.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet instance.
+ * @returns {void}
  */
 function clearAllSheets(ss) {
   ss.getSheets().forEach(sheet => ss.deleteSheet(sheet));
 }
 
 /**
- * Creates the 'Settings' sheet with predefined parameters for gasoline and diesel.
- * This sheet holds configuration values used in formulas across other sheets.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet.
+ * Creates the 'Settings' sheet with predefined parameters for fuel calculations.
+ *
+ * This sheet holds key configuration values, such as conversion factors and
+ * default profit margins, which are referenced in formulas across other sheets.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet instance.
+ * @returns {void}
  */
 function createSettingsSheet(ss) {
   const sheet = ss.insertSheet('Settings');
@@ -47,15 +61,22 @@ function createSettingsSheet(ss) {
     ['Default Exchange Rate USD→KHR']
   ]);
   sheet.getRange('B2:B5').setValues([[1390], [34], [300], [4000]]);
-  sheet.getRange('B6').setValue(''); // Placeholder for exchange rate
+  sheet.getRange('B6').setValue(4100); // Placeholder for exchange rate
   sheet.getRange('C1').setValue('Diesel');
   sheet.getRange('C2:C5').setValues([[1190], [34], [300], [4000]]);
-  sheet.getRange('C6').setValue(''); // Placeholder for exchange rate
+  sheet.getRange('C6').setValue(4100); // Placeholder for exchange rate
 }
 
 /**
- * Creates the 'Fuel Purchases' sheet with headers and formulas for tracking fuel buys.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet.
+ * Creates the 'Fuel Purchases' sheet for tracking fuel acquisition data.
+ *
+ * This sheet includes headers for manual data entry (e.g., date, price) and
+ * columns with pre-filled formulas to automatically calculate metrics like
+ * total cost, cost per liter, and cost per tank. It also adds data validation
+ * to guide user input.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet instance.
+ * @returns {void}
  */
 function createFuelPurchasesSheet(ss) {
   const sheet = ss.insertSheet('Fuel Purchases');
@@ -67,20 +88,45 @@ function createFuelPurchasesSheet(ss) {
   ];
   sheet.getRange('A1:O1').setValues([headers]);
 
-  // Set formulas for calculated columns
-  sheet.getRange('H2').setFormula('=IF(D2="USD",C2*E2,C2*E2/G2)');
-  sheet.getRange('I2').setFormula('=IF(D2="KHR",C2*E2,C2*E2*F2)');
-  sheet.getRange('J2').setFormula('=E2*IF(B2="Gasoline",Settings!B2,Settings!C2)');
-  sheet.getRange('K2').setFormula('=J2/IF(B2="Gasoline",Settings!B3,Settings!C3)');
-  sheet.getRange('L2').setFormula('=H2/J2');
-  sheet.getRange('M2').setFormula('=I2/J2');
-  sheet.getRange('N2').setFormula('=L2*IF(B2="Gasoline",Settings!B3,Settings!C3)');
-  sheet.getRange('O2').setFormula('=M2*IF(B2="Gasoline",Settings!B3,Settings!C3)');
+  // --- Data Validation Rules ---
+  // Dropdown for 'Fuel Type' column
+  const fuelTypeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Gasoline', 'Diesel'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange('B2:B').setDataValidation(fuelTypeRule);
+
+  // Dropdown for 'Currency' column
+  const currencyRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['USD', 'KHR'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange('D2:D').setDataValidation(currencyRule);
+
+  // --- Formulas with Error Handling ---
+  const formulas = [
+    '=IFERROR(IF($D2="USD", $C2*$E2, $C2*$E2/$G2), "")',
+    '=IFERROR(IF($D2="KHR", $C2*$E2, $C2*$E2*$F2), "")',
+    '=IFERROR($E2*IF($B2="Gasoline", Settings!$B$2, Settings!$C$2), "")',
+    '=IFERROR(J2/IF($B2="Gasoline", Settings!$B$3, Settings!$C$3), "")',
+    '=IFERROR($H2/J2, "")',
+    '=IFERROR($I2/J2, "")',
+    '=IFERROR(L2*IF($B2="Gasoline", Settings!$B$3, Settings!$C$3), "")',
+    '=IFERROR(M2*IF($B2="Gasoline", Settings!$B$3, Settings!$C$3), "")'
+  ];
+  sheet.getRange('H2:O2').setFormulas([formulas]);
 }
 
 /**
- * Creates the 'Fuel Sales' sheet with headers and formulas for tracking fuel sales.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet.
+ * Creates the 'Fuel Sales' sheet for tracking fuel sales and profitability.
+ *
+ * This sheet allows users to input sales data and automatically calculates
+ * revenue and profit metrics by looking up purchase prices and applying
+ * user-defined profit margins. Formulas are wrapped in IFERROR to handle
+ * cases where purchase data is missing.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet instance.
+ * @returns {void}
  */
 function createFuelSalesSheet(ss) {
   const sheet = ss.insertSheet('Fuel Sales');
@@ -91,18 +137,36 @@ function createFuelSalesSheet(ss) {
   ];
   sheet.getRange('A1:J1').setValues([headers]);
 
-  // Set formulas for calculated columns
-  sheet.getRange('E2').setFormula("=VLOOKUP(B2,'Fuel Purchases'!B:O,15,FALSE)+D2");
-  sheet.getRange('F2').setFormula("=E2/IF(B2=\"Gasoline\",Settings!B3,Settings!C3)");
-  sheet.getRange('G2').setFormula("=E2*C2");
-  sheet.getRange('H2').setFormula("=G2/'Fuel Purchases'!F2");
-  sheet.getRange('I2').setFormula("=G2-(VLOOKUP(B2,'Fuel Purchases'!B:O,15,FALSE)*C2)");
-  sheet.getRange('J2').setFormula("=I2/'Fuel Purchases'!G2");
+  // --- Data Validation Rules ---
+  // Dropdown for 'Fuel Type' column
+  const fuelTypeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Gasoline', 'Diesel'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange('B2:B').setDataValidation(fuelTypeRule);
+
+  // --- Formulas with Error Handling ---
+  const vlookupBase = "VLOOKUP($B2, 'Fuel Purchases'!$B:$O, 15, FALSE)";
+  const formulas = [
+    `=IFERROR(${vlookupBase} + $D2, "Missing Purchase Data")`,
+    `=IFERROR(E2 / IF($B2="Gasoline", Settings!$B$3, Settings!$C$3), "")`,
+    `=IFERROR(E2 * $C2, "")`,
+    `=IFERROR(G2 / INDIRECT("'Fuel Purchases'!F" & MATCH($B2,'Fuel Purchases'!$B:$B,0)), "")`,
+    `=IFERROR(G2 - (${vlookupBase} * $C2), "")`,
+    `=IFERROR(I2 / INDIRECT("'Fuel Purchases'!G" & MATCH($B2,'Fuel Purchases'!$B:$B,0)), "")`
+  ];
+  sheet.getRange('E2:J2').setFormulas([formulas]);
 }
 
 /**
- * Creates the 'Dashboard' sheet with formulas to summarize key metrics.
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet.
+ * Creates the 'Dashboard' sheet to summarize key financial metrics.
+ *
+ * This sheet provides a high-level overview of the fuel business by using
+ * SUMIF formulas to aggregate data from the 'Fuel Purchases' and 'Fuel Sales'
+ * sheets, breaking down totals by fuel type and currency.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss The active spreadsheet instance.
+ * @returns {void}
  */
 function createDashboardSheet(ss) {
   const sheet = ss.insertSheet('Dashboard');
@@ -115,7 +179,7 @@ function createDashboardSheet(ss) {
   ];
   sheet.getRange('A2:A9').setValues(metrics.map(m => [m]));
 
-  // Set formulas for dashboard metrics
+  // Set formulas to aggregate data from other sheets.
   sheet.getRange('B2').setFormula("=SUMIF('Fuel Purchases'!B:B,\"Gasoline\",'Fuel Purchases'!H:H)");
   sheet.getRange('B3').setFormula("=SUMIF('Fuel Purchases'!B:B,\"Diesel\",'Fuel Purchases'!H:H)");
   sheet.getRange('B4').setFormula("=SUMIF('Fuel Purchases'!B:B,\"Gasoline\",'Fuel Purchases'!I:I)");
