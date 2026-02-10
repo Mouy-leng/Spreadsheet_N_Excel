@@ -1,5 +1,10 @@
 # Google Apps Script for Fuel Management Spreadsheet
 
+## 📓 Knowledge Base
+- **NotebookLM**: [Access here](https://notebooklm.google.com/notebook/e8f4c29d-9aec-4d5f-8f51-2ca168687616)
+- **Note**: This notebook is available for reading and writing. AI agents must read it before starting work.
+
+
 This repository contains a Google Apps Script that automatically generates a comprehensive fuel management spreadsheet. The script creates four sheets: `Settings`, `Fuel Purchases`, `Fuel Sales`, and a `Dashboard`, complete with predefined formulas to track and summarize fuel-related data.
 
 ## How to Use
